@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forest Alien Racer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a1a0a;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:Courier New,monospace}
+canvas{border:3px solid #2d5016;box-shadow:0 0 20px rgba(0,0,0,0.8);max-width:96vw;max-height:96vh;background:#1a2f1a}
+#ui{position:absolute;top:10px;left:50%;transform:translateX(-50%);color:#7cfc00;font-size:20px;font-weight:bold;text-shadow:2px 2px 0 #000;pointer-events:none;z-index:10}
+#menu{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,10,0,0.9);display:flex;flex-direction:column;justify-content:center;align-items:center;color:#7cfc00;z-index:20}
+#menu h1{font-size:42px;margin-bottom:10px;text-shadow:0 0 10px #7cfc00}
+#menu p{color:#aaa;margin:5px 0;font-size:16px}
+button{margin-top:20px;padding:12px 30px;font-size:18px;background:#2d5016;color:#fff;border:2px solid #7cfc00;cursor:pointer;font-family:inherit;font-weight:bold}
+button:active{background:#7cfc00;color:#000}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="ui">SCORE: <span id="scoreTxt">0</span> | LIVES: <span id="livesTxt">♥♥♥</span></div>
+
+<div id="menu">
+  <h1>FOREST RUN</h1>
+  <p>Arrow Keys or A/D to Steer</p>
+  <p>Touch & Drag on Mobile</p>
+  <button onclick="startGame()">START GAME</button>
+</div>
+
+<canvas id="c" width="460" height="700"></canvas>
+
+<script>
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+const menu = document.getElementById('menu');
+const scoreTxt = document.getElementById('scoreTxt');
+const livesTxt = document.getElementById('livesTxt');
+
+// Game Constants
+const W = 460, H = 700;
+const ROAD_L = 70, ROAD_R = W - 70;
+const ROAD_W = ROAD_R - ROAD_L;
+const LANES = 4;
+const LANE_W = ROAD_W / LANES;
+const PW = 42, PH = 72;
+
+// Game State
+let state = 'menu'; // menu, play, dead
+let score = 0, lives = 3;
+let roadOff = 0;
+let frame = 0;
+let invTick = 0;
+let touchX = null;
+
+// Entities
+let player = {x: W/2 - PW/2, y: H - PH - 40, vx: 0};
+let enemies = [];
+let particles = [];
+let trees = [];
+let keys = {};
+
+// Init Trees (Forest Background)
+for(let i=0; i<12; i++){
+  trees.push({
+    x: Math.random() < 0.5 ? Math.random()*60 : W - 60 + Math.random()*60,
+    y: Math.random() * H,
+    h: 40 + Math.random()*60,
+    color: Math.random()<0.5?'#1a4a1a':'#0f3d0f'
+  });
+}
+
+// Input Handling
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  keys[e.key.toLowerCase()] = true;
+  if(e.key === 'Enter' && (state === 'menu' || state === 'dead')) startGame();
+});
+
+window.addEventListener('keyup', e => {
+  keys[e.key] = false;
+  keys[e.key.toLowerCase()] = false;
+});
+
+// Touch Controls
+c.addEventListener('touchstart', e => {
+  e.preventDefault();
+  touchX = e.touches[0].clientX;
+  if(state === 'menu' || state === 'dead') startGame();
+}, {passive:false});
+
+c.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if(touchX === null) return;
+  let dx = e.touches[0].clientX - touchX;
+  keys.ArrowLeft = dx < -5;
+  keys.ArrowRight = dx > 5;
+  touchX = e.touches[0].clientX;
+}, {passive:false});
+
+c.addEventListener('touchend', e => {
+  e.preventDefault();
+  touchX = null;
+  keys.ArrowLeft = false;
+  keys.ArrowRight = false;
+}, {passive:false});
+
+function startGame(){
+  menu.classList.add('hidden');
+  state = 'play';
+  score = 0;
+  lives = 3;
+  enemies = [];
+  particles = [];
+  player.x = W/2 - PW/2;
+  invTick = 0;
+  updateUI();
+}
+
+function updateUI(){
+  scoreTxt.textContent = Math.floor(score);
+  let hearts = '';
+  for(let i=0;i<lives;i++) hearts += '♥';
+  livesTxt.textContent = hearts;
+}
+
+function spawnEnemy(){
+  if(enemies.length > 5) return;
+  let lane = Math.floor(Math.random() * LANES);
+  let ex = ROAD_L + lane * LANE_W + (LANE_W - 36)/2;
+  
+  // Prevent spawn overlap
+  for(let e of enemies) if(Math.abs(e.x - ex) < 40 && e.y < 100) return;
+  
+  enemies.push({
+    x: ex, y: -80, w: 36, h: 64,
+    speed: 3 + Math.random()*2,
+    hue: Math.random()<0.4 ? 120 : 0, // Green alien or Red car
+    alien: Math.random()<0.4,
+    wobble: Math.random()*Math.PI*2
+  });
+}
+
+function collides(a, b){
+  // Slight padding for fair hitbox
+  let pad = 6;
+  return a.x < b.x + b.w - pad && a.x + PW > b.x + pad && 
+         a.y < b.y + b.h - pad && a.y + PH > b.y + pad;
+}
+
+function burst(x, y, col){
+  for(let i=0; i<15; i++){
+    particles.push({
+      x: x, y: y,
+      vx: (Math.random()-0.5)*10,
+      vy: (Math.random()-0.5)*10,
+      life: 30,
+      col: col
+    });
+  }
+}
+
+function update(){
+  if(state !== 'play') return;
+  frame++;
+  
+  // Player Movement (Arrow Keys OR A/D)
+  let move = 0;
+  if(keys.ArrowLeft || keys.a) move = -6;
+  if(keys.ArrowRight || keys.d) move = 6;
+  player.x += move;
+  
+  // Clamp to road
+  if(player.x < ROAD_L + 5) player.x = ROAD_L + 5;
+  if(player.x > ROAD_R - PW - 5) player.x = ROAD_R - PW - 5;
+  
+  // Invincibility
+  if(invTick > 0) invTick--;
+  
+  // Road Animation
+  roadOff = (roadOff + 5) % 40;
+  
+  // Forest Trees (Parallax)
+  for(let t of trees){
+    t.y += 4;
+    if(t.y > H) {
+      t.y = -t.h;
+      t.x = Math.random() < 0.5 ? Math.random()*50 : W - 50 + Math.random()*50;
+    }
+  }
+  
+  // Spawn Enemies
+  if(frame % 60 === 0) spawnEnemy();
+  
+  // Update Enemies
+  for(let i=enemies.length-1; i>=0; i--){
+    let e = enemies[i];
+    e.y += e.speed;
+    
+    // Alien wobble
+    if(e.alien){
+      e.wobble += 0.1;
+      e.x += Math.sin(e.wobble)*0.5;
+    }
+    
+    // Collision
+    if(invTick <= 0 && collides(player, e)){
+      lives--;
+      invTick = 60;
+      burst(player.x + PW/2, player.y + PH/2, '#ff0000');
+      enemies.splice(i,1);
+      updateUI();
+      if(lives <= 0){
+        state = 'dead';
+        menu.classList.remove('hidden');
+        menu.innerHTML = `<h1>GAME OVER</h1><p>Score: ${Math.floor(score)}</p><button onclick="startGame()">TRY AGAIN</button>`;
+      }
+      continue;
+    }
+    
+    // Score for passing
+    if(e.y > H && !e.passed){
+      score += 10;
+      e.passed = true;
+      updateUI();
+    }
+    
+    if(e.y > H + 50) enemies.splice(i,1);
+  }
+  
+  // Particles
+  for(let i=particles.length-1; i>=0; i--){
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.2; // gravity
+    p.life--;
+    if(p.life <= 0) particles.splice(i,1);
+  }
+  
+  score += 0.05; // Survival bonus
+}
+
+function drawCar(x, y, w, h, hue, isPlayer){
+  ctx.save();
+  
+  // Body
+  ctx.fillStyle = `hsl(${hue},80%,45%)`;
+  ctx.fillRect(x+4, y+5, w-8, h-10);
+  
+  // Roof
+  ctx.fillStyle = `hsl(${hue},60%,30%)`;
+  ctx.fillRect(x+8, y+15, w-16, 20);
+  
+  // Wheels
+  ctx.fillStyle = '#111';
+  ctx.fillRect(x-2, y+12, 4, 12);
+  ctx.fillRect(x+w-2, y+12, 4, 12);
+  ctx.fillRect(x-2, y+h-20, 4, 12);
+  ctx.fillRect(x+w-2, y+h-20, 4, 12);
+  
+  // Lights
+  ctx.fillStyle = isPlayer ? '#00ffff' : '#ffaa00';
+  if(isPlayer) ctx.shadowBlur = 10; ctx.shadowColor = '#00ffff';
+  ctx.fillRect(x+6, y+2, 8, 4);
+  ctx.fillRect(x+w-14, y+2, 8, 4);
+  ctx.shadowBlur = 0;
+  
+  ctx.restore();
+}
+
+function draw(){
+  // Clear Forest Background
+  ctx.fillStyle = '#0d260d';
+  ctx.fillRect(0,0,W,H);
+  
+  // Draw Trees
+  for(let t of trees){
+    ctx.fillStyle = t.color;
+    ctx.beginPath();
+    ctx.moveTo(t.x, t.y + t.h);
+    ctx.lineTo(t.x + 15, t.y);
+    ctx.lineTo(t.x + 30, t.y + t.h);
+    ctx.fill();
+    // Trunk
+    ctx.fillStyle = '#3d2817';
+    ctx.fillRect(t.x + 12, t.y + t.h, 6, 10);
+  }
+  
+  // Draw Road
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(ROAD_L, 0, ROAD_W, H);
+  
+  // Road Edges
+  ctx.strokeStyle = '#7cfc00';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(ROAD_L,0); ctx.lineTo(ROAD_L,H);
+  ctx.moveTo(ROAD_R,0); ctx.lineTo(ROAD_R,H);
+  ctx.stroke();
+  
+  // Lane Markers
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([20,20]);
+  ctx.lineDashOffset = -roadOff;
+  for(let i=1; i<LANES; i++){
+    let lx = ROAD_L + i*LANE_W;
+    ctx.beginPath();
+    ctx.moveTo(lx,0); ctx.lineTo(lx,H);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  
+  // Draw Enemies
+  for(let e of enemies){
+    drawCar(e.x, e.y, e.w, e.h, e.alien?100:0, false);
+  }
+  
+  // Draw Player (Blink if invincible)
+  if(invTick <= 0 || Math.floor(frame/4)%2 === 0){
+    drawCar(player.x, player.y, PW, PH, 200, true);
+  }
+  
+  // Draw Particles
+  for(let p of particles){
+    ctx.globalAlpha = p.life/30;
+    ctx.fillStyle = p.col;
+    ctx.fillRect(p.x, p.y, 4, 4);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
