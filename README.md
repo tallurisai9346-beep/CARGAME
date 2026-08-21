@@ -1,71 +1,79 @@
-# Car Game
+# Forest Car Game
 
-A mini car race game created for web browsers.
+Small browser car game where you race in a forest, avoid other cars, and do not fall from the track.
 
-## About
+**Play the game:** [Forest Car Game](https://cargame-rouge.vercel.app/?utm_source=chatgpt.com)
 
-This is a browser-based car game featuring simple racing dynamics, avoiding other cars and scoring points.
+## Description
 
-I created this project to practice my HTML, CSS, JavaScript coding skills and for the joy of creating a working game.
+I decided to make a small car game that could be easily run from the browser. It is pretty simple — race in the car, don't crash, and make your best score on each try.
 
-## Features
+I've tried to leave the game mechanics simple without covering the whole page with extra elements.
 
-Car control
+## How to play
 
-Other cars on the road
-Collision detection
+Use **Left / Right Arrow** keys to drive.
 
-Score counter
-Difficulty scaling
-Simple UI
-No need for a server; runs in a browser
-## Controls
-| Key | Action |
-| --- | --- |
-| Arrow keys or WASD | Control the car |
-| Space | Special key if available |
+**A / D** can also be used to drive.
 
-| R | Restart the game |
-## How To Play
-1. Open the page in a browser.
-2. Use keys to move the car.
-3. Avoid collisions with other cars.
-4. Try to drive as far as you can.
-5. Beat your own score.
-## Technologies
-HTML CSS JavaScript
-No server-side code was used.
-## Getting Started
-To run this project locally, open index.html in a browser.
-If you are using VS Code, you can use the Live Server extension.
-Run the following command to clone the repository:
-git clone
-After cloning the repository, open it in a preferred code editor and run the project file.
-## Project Structure
-car-game/
-├── index.html
-├── style.css
-├── script.js
-└── assets/
-The actual code file names may vary depending on the branch.
-## What I learned
-I learned how to:
-Work with keyboard events
-Implement game loops in JS
-Make collision detection
-Animate elements on a page
-Update score displays
-Style game ui with css
-## What's next
-Possible future improvements:
-More cars
-Tracks
-Car selection
-Sound effects
-Multiple levels
-Highscore system
-Mobile controls
-## Live Preview
-The project was deployed on vercel:
+Use **Space** to activate the boost.
 
-https://cargame-rouge.vercel.app/
+Do not touch other cars and obstacles.
+
+Keep racing and try to beat your high score.
+
+Currently, live version demonstrates the controls as follows:
+
+Controls: **Arrow Keys / A-D to drive**, **Space to boost**.
+
+## Game features
+
+* Forest racing environment
+* Simple controls for the car
+* Boosting feature
+* Moving traffic and obstacles
+* Scoring gameplay
+* Runs directly in a browser
+* No installation required
+
+## Built with
+
+Project for the web with basic frontend technologies:
+
+* HTML
+* CSS
+* JavaScript
+
+No complicated configurations are needed to run the deployed version of the game.
+
+## Playing locally
+
+If you have the game files downloaded locally, you can simply open the main HTML file.
+
+In case you want to use VS Code, you can install Live Server extension, use `Go Live` command, and open the generated local server URL.
+
+## Why was it created
+
+Just because I wanted to create something that looks more like a game instead of plain webpage. It was also useful to practice my knowledge in movement, collision, game controls, etc.
+
+## Ideas to implement in the future
+
+These are some features I am planning to add:
+
+* More cars to avoid
+* Several forest tracks
+* Increased difficulty level
+* Improved car effect animations
+* Other types of boost
+* Saving player high scores
+* Additional mobile controls
+
+## Live demo
+
+Try it:
+
+[https://cargame-rouge.vercel.app/](https://cargame-rouge.vercel.app/?utm_source=chatgpt.com)
+
+---
+
+Created as a small web game. Have fun driving! 🚗
