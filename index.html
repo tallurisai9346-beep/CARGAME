@@ -1,570 +1,541 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Forest Run</title>
-<style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forest Run</title>
+
+  <style>
 *{box-sizing:border-box}
-:root{
-  --ink:#171914;
-  --paper:#d9cfad;
-  --gold:#b99550;
-  --green:#273b28;
-  --road:#343733;
-}
-body{
-  margin:0;
-  min-height:100vh;
-  background:var(--ink);
-  color:var(--paper);
-  font-family:Verdana,Arial,sans-serif;
-}
-.page{
-  width:min(520px,94vw);
-  margin:24px auto;
-}
-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:end;
-  border-bottom:1px solid #575b45;
-  padding:0 2px 9px;
-}
-h1{
-  margin:0;
-  font:700 30px Georgia,serif;
-  letter-spacing:1px;
-}
-header span{
-  color:#89917e;
-  font-size:10px;
-  letter-spacing:2px;
-}
-#game{
-  display:block;
-  width:100%;
-  margin-top:14px;
-  background:#203b24;
-  border:2px solid #696b50;
-  box-shadow:6px 6px 0 #080908;
-  touch-action:none;
-}
-.panel{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:7px;
-  margin-top:10px;
-}
-button{
-  border:1px solid #666b50;
-  background:#222820;
-  color:#dcd3b7;
-  padding:12px 4px;
-  font-weight:bold;
-  font-size:11px;
-  cursor:pointer;
-  touch-action:none;
-  user-select:none;
-}
-button:active{background:#8b713b;color:#fff}
-.tip{
-  text-align:center;
-  color:#747d6d;
-  font-size:10px;
-  line-height:1.6;
-  margin:9px 0;
-}
+body{margin:0;background:#000;color:#20251d;font:14px Arial,sans-serif}
+.page{width:min(500px,94vw);margin:18px auto}
+.top{display:flex;justify-content:space-between;align-items:end;padding:6px 2px 9px;border-bottom:2px solid #20251d}
+.top h1{margin:0;font:bold 28px Georgia,serif}
+.top small{font-size:10px;font-weight:bold;letter-spacing:1px}
+.screen{margin-top:12px;padding:4px;background:#111610;border:2px solid #20251d}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+.keys{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.keys button{height:42px;border:2px solid #20251d;background:transparent;font-weight:bold;cursor:pointer;touch-action:none}
+.keys button:active{background:#d9d1bb}
+.note{text-align:center;font-size:10px;font-weight:bold}
+.note span{border-bottom:1px solid #20251d}
 </style>
 </head>
+
 <body>
-<main class="page">
-<header>
-  <h1>FOREST RUN</h1>
-  <span>FIELD TEST 01</span>
-</header>
+  <main class="page">
+    <header class="top">
+      <h1>FOREST RUN</h1>
+      <small>ROAD 01</small>
+    </header>
 
-<canvas id="game" width="460" height="700"></canvas>
+    <section class="screen">
+      <canvas id="game" width="460" height="700"></canvas>
+    </section>
 
-<div class="panel">
-  <button id="left">LEFT</button>
-  <button id="boost">BOOST</button>
-  <button id="right">RIGHT</button>
-</div>
+    <div class="keys">
+      <button id="leftBtn">LEFT</button>
+      <button id="boostBtn">BOOST</button>
+      <button id="rightBtn">RIGHT</button>
+    </div>
 
-<div class="tip">
-  A / D or arrow keys to steer · Space to boost · Enter to start<br>
-  Collect leaves for fuel. Survive long enough to find the hidden shortcut.
-</div>
-</main>
+    <p class="note">
+      <span>A / D</span> or <span>← / →</span>
+      &nbsp; • &nbsp;
+      <span>SPACE</span> boost
+      &nbsp; • &nbsp;
+      <span>ENTER</span> start
+    </p>
+  </main>
 
-<script>
-const canvas=document.querySelector("#game");
-const ctx=canvas.getContext("2d");
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
 
-const road={left:70,right:390};
-const lane=(road.right-road.left)/4;
+    const road = {
+      left:70,
+      right:390,
+      lane:80
+    };
 
-let player;
-let traffic=[];
-let pickups=[];
-let dust=[];
-let running=false;
-let finished=false;
+    const player = {
+      x:209,
+      y:590,
+      w:42,
+      h:70
+    };
 
-let left=false;
-let right=false;
-let boost=false;
+    let traffic = [];
+    let coins = [];
 
-let score=0;
-let best=+localStorage.getItem("forest-best")||0;
-let lives=3;
-let fuel=100;
-let speed=4;
-let ticks=0;
-let selected=0;
-let shield=0;
-let streak=0;
-let shortcut=0;
+    let leftHeld = false;
+    let rightHeld = false;
+    let boostHeld = false;
 
-const paint=[
-  ["RUST","#b45740"],
-  ["MOSS","#668c58"],
-  ["LAKE","#52779b"],
-  ["SUN","#c49b4b"]
-];
+    let playing = false;
+    let crashed = false;
 
-function start(){
-  player={x:road.left+lane*2+9,y:590,w:42,h:70};
-  traffic=[];
-  pickups=[];
-  dust=[];
-  score=0;
-  lives=3;
-  fuel=100;
-  speed=4;
-  ticks=0;
-  shield=0;
-  streak=0;
-  shortcut=0;
-  left=right=boost=false;
-  running=true;
-  finished=false;
-}
+    let score = 0;
+    let lives = 3;
+    let fuel = 100;
+    let speed = 4;
+    let frame = 0;
+    let roadMove = 0;
+    let shield = false;
+    let selectedCar = 0;
 
-function enemy(){
-  if(traffic.length>5)return;
-  const w=38;
-  const n=Math.floor(Math.random()*4);
-  traffic.push({
-    x:road.left+n*lane+(lane-w)/2,
-    y:-75,
-    w:w,
-    h:63,
-    v:2+Math.random()*2.5,
-    c:Math.random()<.35?"#718466":"#526d89"
-  });
-}
+    let best = Number(localStorage.getItem("forestRunBest") || 0);
 
-function pickup(){
-  const n=Math.floor(Math.random()*4);
-  pickups.push({
-    x:road.left+n*lane+lane/2,
-    y:-12,
-    r:8,
-    spin:0
-  });
-}
+    const cars = [
+      {name:"RUST", color:"#a9513e"},
+      {name:"MOSS", color:"#607d54"},
+      {name:"LAKE", color:"#587996"},
+      {name:"SUN", color:"#c39a4b"}
+    ];
 
-function overlaps(a,b){
-  return a.x<b.x+b.w &&
-         a.x+a.w>b.x &&
-         a.y<b.y+b.h &&
-         a.y+a.h>b.y;
-}
+    function resetGame(){
+      player.x = 209;
+      traffic = [];
+      coins = [];
 
-function puff(x,y){
-  for(let i=0;i<10;i++){
-    dust.push({
-      x:x,y:y,
-      dx:(Math.random()-.5)*5,
-      dy:(Math.random()-.5)*5,
-      life:20+Math.random()*18
-    });
-  }
-}
+      score = 0;
+      lives = 3;
+      fuel = 100;
+      speed = 4;
+      frame = 0;
+      roadMove = 0;
+      shield = false;
 
-function update(){
-  if(!running)return;
+      leftHeld = false;
+      rightHeld = false;
+      boostHeld = false;
 
-  ticks++;
-
-  if(left)player.x-=5.8;
-  if(right)player.x+=5.8;
-
-  player.x=Math.max(road.left,Math.min(road.right-player.w,player.x));
-
-  if(boost && fuel>0){
-    speed=Math.min(10.5,speed+.065);
-    fuel=Math.max(0,fuel-.78);
-  }else{
-    speed=Math.max(4,speed-.025);
-    fuel=Math.min(100,fuel+.12);
-  }
-
-  if(ticks%43===0)enemy();
-  if(ticks%80===0)pickup();
-
-  /* A rare shortcut appears after a long clean run. */
-  if(ticks>900 && shortcut===0 && Math.random()<.002)shortcut=1;
-  if(shortcut>0)shortcut++;
-
-  for(let i=traffic.length-1;i>=0;i--){
-    const car=traffic[i];
-    car.y+=car.v+speed*.4;
-
-    if(car.y>720){
-      traffic.splice(i,1);
-      score+=10;
-      streak++;
-      continue;
+      crashed = false;
+      playing = true;
     }
 
-    if(overlaps(player,car)){
-      traffic.splice(i,1);
-      puff(player.x+21,player.y+35);
+    function addTraffic(){
+      if(traffic.length >= 6) return;
 
-      if(shield){
-        shield=0;
-        score+=30;
+      const lane = Math.floor(Math.random() * 4);
+
+      traffic.push({
+        x:road.left + lane * road.lane + 21,
+        y:-75,
+        w:38,
+        h:64,
+        speed:2 + Math.random() * 2,
+        color:Math.random() > .5 ? "#587593" : "#718765"
+      });
+    }
+
+    function addCoin(){
+      const lane = Math.floor(Math.random() * 4);
+
+      coins.push({
+        x:road.left + lane * road.lane + 40,
+        y:-12,
+        size:8
+      });
+    }
+
+    function hits(a,b){
+      return a.x < b.x + b.w &&
+             a.x + a.w > b.x &&
+             a.y < b.y + b.h &&
+             a.y + a.h > b.y;
+    }
+
+    function update(){
+      if(!playing) return;
+
+      frame++;
+      roadMove += speed;
+
+      if(leftHeld) player.x -= 6;
+      if(rightHeld) player.x += 6;
+
+      if(player.x < road.left) player.x = road.left;
+      if(player.x + player.w > road.right){
+        player.x = road.right - player.w;
+      }
+
+      if(boostHeld && fuel > 0){
+        speed += .06;
+        fuel -= .75;
+        if(speed > 10) speed = 10;
       }else{
-        lives--;
-        streak=0;
-        player.x=road.left+lane*2+9;
+        if(speed > 4) speed -= .02;
+        fuel += .12;
+        if(fuel > 100) fuel = 100;
+      }
 
-        if(lives<=0){
-          running=false;
-          finished=true;
-          if(score>best){
-            best=score;
-            localStorage.setItem("forest-best",best);
+      if(frame % 45 === 0) addTraffic();
+      if(frame % 80 === 0) addCoin();
+
+      for(let i=traffic.length-1;i>=0;i--){
+        const car = traffic[i];
+
+        car.y += car.speed + speed * .4;
+
+        if(car.y > 720){
+          traffic.splice(i,1);
+          score += 10;
+          continue;
+        }
+
+        if(hits(player,car)){
+          traffic.splice(i,1);
+
+          if(shield){
+            shield = false;
+            score += 25;
+          }else{
+            lives--;
+            player.x = 209;
+
+            if(lives <= 0){
+              playing = false;
+              crashed = true;
+
+              if(score > best){
+                best = score;
+                localStorage.setItem("forestRunBest",best);
+              }
+            }
           }
         }
       }
+
+      for(let i=coins.length-1;i>=0;i--){
+        const coin = coins[i];
+
+        coin.y += speed * .5;
+
+        if(coin.y > 720){
+          coins.splice(i,1);
+          continue;
+        }
+
+        if(
+          coin.x > player.x &&
+          coin.x < player.x + player.w &&
+          coin.y > player.y &&
+          coin.y < player.y + player.h
+        ){
+          coins.splice(i,1);
+          score += 5;
+          fuel += 15;
+
+          if(fuel > 100) fuel = 100;
+        }
+      }
+
+      if(score > 0 && score % 200 === 0){
+        shield = true;
+      }
     }
-  }
 
-  for(let i=pickups.length-1;i>=0;i--){
-    const item=pickups[i];
-    item.y+=speed*.5;
-    item.spin+=.15;
+    function drawTree(x,y){
+      ctx.fillStyle = "#573b24";
+      ctx.fillRect(x-3,y+18,6,36);
 
-    if(item.y>720){
-      pickups.splice(i,1);
-      continue;
+      ctx.fillStyle = "#2c542f";
+
+      ctx.beginPath();
+      ctx.arc(x,y,23,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(x-15,y+12,17,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(x+15,y+12,17,0,Math.PI*2);
+      ctx.fill();
     }
 
-    if(item.x>player.x && item.x<player.x+player.w &&
-       item.y>player.y && item.y<player.y+player.h){
-      pickups.splice(i,1);
-      score+=8;
-      fuel=Math.min(100,fuel+20);
-      if(streak>=5)shield=1;
+    function drawRoad(){
+      ctx.fillStyle = "#244129";
+      ctx.fillRect(0,0,460,700);
+
+      for(let y=-70;y<760;y+=75){
+        const yy = y + roadMove % 75;
+        drawTree(25,yy);
+        drawTree(55,yy+30);
+        drawTree(435,yy+15);
+        drawTree(405,yy+45);
+      }
+
+      ctx.fillStyle = "#444541";
+      ctx.fillRect(road.left,0,road.right-road.left,700);
+
+      ctx.fillStyle = "#c5a15a";
+      ctx.fillRect(road.left,0,3,700);
+      ctx.fillRect(road.right-3,0,3,700);
+
+      ctx.fillStyle = "#c7c2ad";
+
+      for(let lane=1;lane<4;lane++){
+        const x = road.left + lane * road.lane;
+
+        for(let y=-70;y<700;y+=75){
+          ctx.fillRect(x,y + roadMove % 75,2,30);
+        }
+      }
     }
-  }
 
-  /* Original extra feature: clean-run bonus. */
-  if(streak>0 && streak%8===0){
-    score+=4;
-    streak++;
-  }
+    function drawCar(car,color){
+      ctx.fillStyle = "#111";
+      ctx.fillRect(car.x-4,car.y+15,6,18);
+      ctx.fillRect(car.x+car.w-2,car.y+15,6,18);
+      ctx.fillRect(car.x-4,car.y+car.h-25,6,18);
+      ctx.fillRect(car.x+car.w-2,car.y+car.h-25,6,18);
 
-  /* Original extra feature: shortcut reward. */
-  if(shortcut===45){
-    score+=50;
-    fuel=Math.min(100,fuel+30);
-    shield=1;
-  }
+      ctx.fillStyle = color;
+      ctx.fillRect(car.x+4,car.y+3,car.w-8,car.h-6);
 
-  for(let i=dust.length-1;i>=0;i--){
-    const p=dust[i];
-    p.x+=p.dx;
-    p.y+=p.dy;
-    p.life--;
-    if(p.life<=0)dust.splice(i,1);
-  }
-}
+      ctx.fillStyle = "#1d3740";
+      ctx.fillRect(car.x+9,car.y+12,car.w-18,20);
 
-function tree(x,y,small){
-  ctx.fillStyle="#513720";
-  ctx.fillRect(x-3,y+19,6,33);
-
-  ctx.fillStyle=small?"#355c37":"#244b2b";
-  ctx.beginPath();
-  ctx.arc(x,y,small?15:23,0,Math.PI*2);
-  ctx.arc(x-14,y+11,small?12:17,0,Math.PI*2);
-  ctx.arc(x+14,y+11,small?12:17,0,Math.PI*2);
-  ctx.fill();
-}
-
-function background(){
-  ctx.fillStyle="#1d3922";
-  ctx.fillRect(0,0,460,700);
-
-  for(let y=-60;y<760;y+=72){
-    const p=y+(ticks*speed)%72;
-    tree(25,p,false);
-    tree(55,p+27,true);
-    tree(435,p+14,false);
-    tree(405,p+43,true);
-  }
-
-  ctx.fillStyle="#343733";
-  ctx.fillRect(road.left,0,road.right-road.left,700);
-
-  ctx.fillStyle="#927544";
-  ctx.fillRect(road.left,0,3,700);
-  ctx.fillRect(road.right-3,0,3,700);
-
-  ctx.fillStyle="#b8b5a1";
-  for(let n=1;n<4;n++){
-    const x=road.left+n*lane;
-    for(let y=-60;y<700;y+=76){
-      ctx.fillRect(x-1,y+(ticks*speed)%76,2,29);
+      ctx.fillStyle = "#efd372";
+      ctx.fillRect(car.x+8,car.y+5,7,5);
+      ctx.fillRect(car.x+car.w-15,car.y+5,7,5);
     }
-  }
-}
 
-function car(c,color){
-  ctx.fillStyle="#10110f";
-  ctx.fillRect(c.x-4,c.y+15,6,18);
-  ctx.fillRect(c.x+c.w-2,c.y+15,6,18);
-  ctx.fillRect(c.x-4,c.y+c.h-25,6,18);
-  ctx.fillRect(c.x+c.w-2,c.y+c.h-25,6,18);
+    function drawCoin(coin){
+      ctx.fillStyle = "#dfb54c";
+      ctx.beginPath();
+      ctx.arc(coin.x,coin.y,coin.size,0,Math.PI*2);
+      ctx.fill();
 
-  ctx.fillStyle=color;
-  ctx.beginPath();
-  ctx.roundRect(c.x+4,c.y+2,c.w-8,c.h-4,6);
-  ctx.fill();
-
-  ctx.fillStyle="#1b3038";
-  ctx.beginPath();
-  ctx.roundRect(c.x+9,c.y+12,c.w-18,20,4);
-  ctx.fill();
-
-  ctx.fillStyle="#efd375";
-  ctx.fillRect(c.x+8,c.y+5,7,5);
-  ctx.fillRect(c.x+c.w-15,c.y+5,7,5);
-}
-
-function leaf(p){
-  ctx.save();
-  ctx.translate(p.x,p.y);
-  ctx.rotate(Math.sin(p.spin)*.2);
-  ctx.fillStyle="#d2aa4e";
-  ctx.beginPath();
-  ctx.ellipse(0,0,7,10,0,0,Math.PI*2);
-  ctx.fill();
-  ctx.restore();
-}
-
-function hud(){
-  ctx.textAlign="left";
-  ctx.fillStyle="#eee8d6";
-  ctx.font="bold 14px Arial";
-  ctx.fillText("SCORE "+score,12,23);
-  ctx.fillText("♥".repeat(lives),12,44);
-
-  ctx.fillStyle="#121612";
-  ctx.fillRect(310,13,138,10);
-  ctx.fillStyle="#c9a34f";
-  ctx.fillRect(310,13,138*fuel/100,10);
-
-  ctx.fillStyle="#eee8d6";
-  ctx.font="10px Arial";
-  ctx.fillText("FUEL",310,37);
-
-  ctx.textAlign="right";
-  ctx.fillText(Math.round(speed*25)+" km/h",448,37);
-
-  if(shield){
-    ctx.textAlign="center";
-    ctx.fillStyle="#dfbf5b";
-    ctx.font="bold 11px Arial";
-    ctx.fillText("SHIELD",230,59);
-  }
-
-  if(streak>=3){
-    ctx.fillText("CLEAN x"+streak,230,76);
-  }
-
-  if(shortcut>0 && shortcut<45){
-    ctx.fillStyle="#a8ad8c";
-    ctx.fillText("SHORTCUT AHEAD",230,94);
-  }
-}
-
-function menu(){
-  background();
-  ctx.textAlign="center";
-
-  ctx.fillStyle="#e5dac0";
-  ctx.font="bold 42px Georgia";
-  ctx.fillText("FOREST RUN",230,120);
-
-  ctx.fillStyle="#909a88";
-  ctx.font="12px Arial";
-  ctx.fillText("PICK A CAR",230,150);
-
-  for(let i=0;i<4;i++){
-    const x=33+i*101;
-    ctx.fillStyle=i===selected?"#aa8a49":"#283129";
-    ctx.fillRect(x,200,92,130);
-    car({x:x+25,y:220,w:42,h:70},paint[i][1]);
-    ctx.fillStyle="#eee8d7";
-    ctx.font="10px Arial";
-    ctx.fillText(paint[i][0],x+46,317);
-  }
-
-  ctx.fillStyle="#d4b25b";
-  ctx.font="bold 15px Arial";
-  ctx.fillText("PRESS ENTER TO START",230,390);
-
-  ctx.fillStyle="#929b89";
-  ctx.font="11px Arial";
-  ctx.fillText("Clean streaks earn shields",230,423);
-  ctx.fillText("A rare shortcut gives a big bonus",230,442);
-
-  ctx.fillStyle="#d9d0b7";
-  ctx.font="bold 13px Arial";
-  ctx.fillText("BEST "+best,230,485);
-}
-
-function endScreen(){
-  background();
-  traffic.forEach(e=>car(e,e.c));
-  car(player,paint[selected][1]);
-
-  ctx.fillStyle="#0b0f0c";
-  ctx.fillRect(48,225,364,225);
-
-  ctx.textAlign="center";
-  ctx.fillStyle="#d4b25b";
-  ctx.font="bold 37px Georgia";
-  ctx.fillText("CRASHED",230,282);
-
-  ctx.fillStyle="#eee8d7";
-  ctx.font="15px Arial";
-  ctx.fillText("Score  "+score,230,322);
-  ctx.fillText("Best   "+best,230,348);
-
-  ctx.fillStyle="#8f9b88";
-  ctx.font="bold 13px Arial";
-  ctx.fillText("ENTER TO TRY AGAIN",230,405);
-}
-
-function draw(){
-  if(!running){
-    finished?endScreen():menu();
-    return;
-  }
-
-  background();
-  traffic.forEach(e=>car(e,e.c));
-  pickups.forEach(leaf);
-  car(player,paint[selected][1]);
-
-  dust.forEach(p=>{
-    ctx.fillStyle="#d0a54c";
-    ctx.fillRect(p.x,p.y,3,3);
-  });
-
-  hud();
-}
-
-/* Keyboard input */
-addEventListener("keydown",e=>{
-  const k=e.key.toLowerCase();
-
-  if(k==="a"||e.key==="arrowleft"){
-    left=true;
-    e.preventDefault();
-  }
-  if(k==="d"||e.key==="arrowright"){
-    right=true;
-    e.preventDefault();
-  }
-  if(e.code==="Space"){
-    boost=true;
-    e.preventDefault();
-  }
-  if(e.key==="Enter"&&!running){
-    start();
-    e.preventDefault();
-  }
-});
-
-addEventListener("keyup",e=>{
-  const k=e.key.toLowerCase();
-
-  if(k==="a"||e.key==="arrowleft")left=false;
-  if(k==="d"||e.key==="arrowright")right=false;
-  if(e.code==="Space")boost=false;
-});
-
-addEventListener("blur",()=>{
-  left=right=boost=false;
-});
-
-/* Button input */
-function hold(id,setter){
-  const b=document.getElementById(id);
-
-  b.addEventListener("pointerdown",e=>{
-    e.preventDefault();
-    b.setPointerCapture?.(e.pointerId);
-    setter(true);
-  });
-
-  b.addEventListener("pointerup",e=>{
-    e.preventDefault();
-    setter(false);
-  });
-
-  b.addEventListener("pointercancel",()=>setter(false));
-  b.addEventListener("lostpointercapture",()=>setter(false));
-}
-
-hold("left",v=>left=v);
-hold("right",v=>right=v);
-hold("boost",v=>boost=v);
-
-/* Menu car selection and start */
-canvas.addEventListener("pointerdown",e=>{
-  if(running)return;
-
-  const r=canvas.getBoundingClientRect();
-  const x=(e.clientX-r.left)*460/r.width;
-  const y=(e.clientY-r.top)*700/r.height;
-
-  if(!finished && y>195 && y<340){
-    const n=Math.floor((x-33)/101);
-    if(n>=0&&n<4){
-      selected=n;
-      return;
+      ctx.strokeStyle = "#7b5d25";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     }
-  }
 
-  start();
-});
+    function drawHud(){
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 15px Arial";
+      ctx.textAlign = "left";
 
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
+      ctx.fillText("SCORE " + score,12,24);
+      ctx.fillText("♥".repeat(lives),12,46);
 
-loop();
-</script>
+      ctx.fillStyle = "#151815";
+      ctx.fillRect(315,14,125,10);
+
+      ctx.fillStyle = "#caa24a";
+      ctx.fillRect(315,14,125 * fuel / 100,10);
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "11px Arial";
+      ctx.fillText("FUEL",315,39);
+
+      ctx.textAlign = "right";
+      ctx.fillText(Math.round(speed * 25) + " km/h",448,39);
+
+      if(shield){
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#dfc15a";
+        ctx.font = "bold 12px Arial";
+        ctx.fillText("SHIELD READY",230,65);
+      }
+    }
+
+    function drawMenu(){
+      drawRoad();
+
+      ctx.textAlign = "center";
+
+      ctx.fillStyle = "#e8e0cc";
+      ctx.font = "bold 40px Georgia";
+      ctx.fillText("FOREST RUN",230,120);
+
+      ctx.fillStyle = "#a8b09e";
+      ctx.font = "13px Arial";
+      ctx.fillText("CHOOSE YOUR CAR",230,150);
+
+      for(let i=0;i<4;i++){
+        const x = 35 + i * 100;
+
+        ctx.fillStyle = i === selectedCar ? "#a98744" : "#293329";
+        ctx.fillRect(x,205,90,125);
+
+        drawCar(
+          {x:x+24,y:220,w:42,h:70},
+          cars[i].color
+        );
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "11px Arial";
+        ctx.fillText(cars[i].name,x+45,316);
+      }
+
+      ctx.fillStyle = "#d4b15b";
+      ctx.font = "bold 16px Arial";
+      ctx.fillText("PRESS ENTER",230,390);
+
+      ctx.fillStyle = "#98a18e";
+      ctx.font = "12px Arial";
+      ctx.fillText("Coins refill fuel",230,425);
+      ctx.fillText("Every 200 points gives a shield",230,445);
+
+      ctx.fillStyle = "#ddd5be";
+      ctx.font = "bold 14px Arial";
+      ctx.fillText("BEST " + best,230,490);
+    }
+
+    function drawGameOver(){
+      drawRoad();
+
+      for(const car of traffic){
+        drawCar(car,car.color);
+      }
+
+      drawCar(player,cars[selectedCar].color);
+
+      ctx.fillStyle = "#0b0f0c";
+      ctx.fillRect(45,225,370,220);
+
+      ctx.textAlign = "center";
+
+      ctx.fillStyle = "#d4b15b";
+      ctx.font = "bold 36px Georgia";
+      ctx.fillText("CRASHED",230,285);
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "16px Arial";
+      ctx.fillText("Score " + score,230,325);
+      ctx.fillText("Best " + best,230,350);
+
+      ctx.fillStyle = "#94a18e";
+      ctx.font = "bold 14px Arial";
+      ctx.fillText("PRESS ENTER TO TRY AGAIN",230,410);
+    }
+
+    function draw(){
+      if(!playing){
+        if(crashed) drawGameOver();
+        else drawMenu();
+        return;
+      }
+
+      drawRoad();
+
+      for(const car of traffic){
+        drawCar(car,car.color);
+      }
+
+      for(const coin of coins){
+        drawCoin(coin);
+      }
+
+      drawCar(player,cars[selectedCar].color);
+      drawHud();
+    }
+
+    function setControl(name,value){
+      if(name === "left") leftHeld = value;
+      if(name === "right") rightHeld = value;
+      if(name === "boost") boostHeld = value;
+    }
+
+    function holdButton(id,name){
+      const button = document.getElementById(id);
+
+      button.addEventListener("pointerdown",event=>{
+        event.preventDefault();
+        setControl(name,true);
+
+        if(button.setPointerCapture){
+          button.setPointerCapture(event.pointerId);
+        }
+      });
+
+      button.addEventListener("pointerup",()=>{
+        setControl(name,false);
+      });
+
+      button.addEventListener("pointercancel",()=>{
+        setControl(name,false);
+      });
+
+      button.addEventListener("pointerleave",()=>{
+        if(!button.hasPointerCapture || !button.hasPointerCapture(0)){
+          setControl(name,false);
+        }
+      });
+    }
+
+    window.addEventListener("keydown",event=>{
+      const key = event.key.toLowerCase();
+
+      if(key === "a" || key === "arrowleft"){
+        leftHeld = true;
+        event.preventDefault();
+      }
+
+      if(key === "d" || key === "arrowright"){
+        rightHeld = true;
+        event.preventDefault();
+      }
+
+      if(event.code === "Space"){
+        boostHeld = true;
+        event.preventDefault();
+      }
+
+      if(event.key === "Enter" && !playing){
+        resetGame();
+        event.preventDefault();
+      }
+    });
+
+    window.addEventListener("keyup",event=>{
+      const key = event.key.toLowerCase();
+
+      if(key === "a" || key === "arrowleft") leftHeld = false;
+      if(key === "d" || key === "arrowright") rightHeld = false;
+      if(event.code === "Space") boostHeld = false;
+    });
+
+    window.addEventListener("blur",()=>{
+      leftHeld = false;
+      rightHeld = false;
+      boostHeld = false;
+    });
+
+    canvas.addEventListener("pointerdown",event=>{
+      if(playing) return;
+
+      const box = canvas.getBoundingClientRect();
+      const x = (event.clientX - box.left) * 460 / box.width;
+      const y = (event.clientY - box.top) * 700 / box.height;
+
+      if(!crashed && y >= 200 && y <= 340){
+        const choice = Math.floor((x - 35) / 100);
+
+        if(choice >= 0 && choice < 4){
+          selectedCar = choice;
+          return;
+        }
+      }
+
+      resetGame();
+    });
+
+    holdButton("leftBtn","left");
+    holdButton("rightBtn","right");
+    holdButton("boostBtn","boost");
+
+    function loop(){
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+  </script>
 </body>
 </html>
