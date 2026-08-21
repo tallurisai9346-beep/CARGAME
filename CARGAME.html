@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Forest Car Game</title>
+
+<style>
+body{
+    margin:0;
+    background:#182018;
+    text-align:center;
+    font-family:Arial;
+    color:white;
+}
+
+canvas{
+    margin-top:15px;
+    border:3px solid #c89b4c;
+    background:#254426;
+    max-width:95%;
+    touch-action:none;
+}
+
+p{
+    color:#aaa;
+    font-size:13px;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game" width="460" height="700"></canvas>
+<p>Arrow keys / A D to move | Space to boost</p>
+
+<script>
+
+var canvas = document.getElementById("game");
+var ctx = canvas.getContext("2d");
+
+var roadLeft = 70;
+var roadRight = 390;
+
+var car = {
+    x:209,
+    y:590,
+    w:42,
+    h:70
+};
+
+var enemies = [];
+var coins = [];
+
+var left = false;
+var right = false;
+var boostKey = false;
+
+var score = 0;
+var lives = 3;
+var speed = 4;
+var fuel = 100;
+
+var playing = false;
+var dead = false;
+
+var selectedCar = 0;
+
+var carColors = [
+    "#d66b4d",
+    "#57965e",
+    "#657db7",
+    "#c38c3d"
+];
+
+var carNames = [
+    "RED",
+    "GREEN",
+    "BLUE",
+    "GOLD"
+];
+
+var best = localStorage.getItem("forestBest");
+
+if(best == null){
+    best = 0;
+}
+
+var count = 0;
+var roadMove = 0;
+var shield = 0;
+
+
+function startGame(){
+
+    car.x = 209;
+
+    enemies = [];
+    coins = [];
+
+    score = 0;
+    lives = 3;
+    speed = 4;
+    fuel = 100;
+
+    count = 0;
+    roadMove = 0;
+    shield = 0;
+
+    playing = true;
+    dead = false;
+}
+
+
+function makeEnemy(){
+
+    if(enemies.length >= 6){
+        return;
+    }
+
+    var lane = Math.floor(Math.random()*4);
+    var laneSize = (roadRight-roadLeft)/4;
+
+    var x = roadLeft + lane*laneSize + 20;
+
+    enemies.push({
+        x:x,
+        y:-70,
+        w:38,
+        h:64,
+        speed:2+Math.random()*2
+    });
+}
+
+
+function makeCoin(){
+
+    var lane = Math.floor(Math.random()*4);
+    var laneSize = (roadRight-roadLeft)/4;
+
+    coins.push({
+        x:roadLeft + lane*laneSize + laneSize/2,
+        y:-10,
+        size:7
+    });
+}
+
+
+function isHit(a,b){
+
+    if(a.x < b.x+b.w &&
+       a.x+a.w > b.x &&
+       a.y < b.y+b.h &&
+       a.y+a.h > b.y){
+
+        return true;
+    }
+
+    return false;
+}
+
+
+function update(){
+
+    if(!playing){
+        return;
+    }
+
+    count++;
+
+    roadMove += speed;
+
+    if(left){
+        car.x -= 6;
+    }
+
+    if(right){
+        car.x += 6;
+    }
+
+    if(car.x < roadLeft){
+        car.x = roadLeft;
+    }
+
+    if(car.x+car.w > roadRight){
+        car.x = roadRight-car.w;
+    }
+
+
+    if(boostKey && fuel > 0){
+
+        speed += .05;
+        fuel -= .8;
+
+        if(speed > 11){
+            speed = 11;
+        }
+
+    }else{
+
+        if(speed > 4){
+            speed -= .01;
+        }
+
+        fuel += .15;
+
+        if(fuel > 100){
+            fuel = 100;
+        }
+    }
+
+
+    if(count % 45 == 0){
+        makeEnemy();
+    }
+
+    if(count % 80 == 0){
+        makeCoin();
+    }
+
+
+    for(var i=enemies.length-1;i>=0;i--){
+
+        var e = enemies[i];
+
+        e.y += e.speed + speed*.4;
+
+        if(e.y > 720){
+
+            enemies.splice(i,1);
+            score += 10;
+
+            continue;
+        }
+
+
+        if(isHit(car,e)){
+
+            enemies.splice(i,1);
+
+            if(shield > 0){
+
+                shield = 0;
+                score += 20;
+
+            }else{
+
+                lives--;
+
+                car.x = 209;
+
+                if(lives <= 0){
+
+                    playing = false;
+                    dead = true;
+
+                    if(score > best){
+
+                        best = score;
+                        localStorage.setItem("forestBest",best);
+                    }
+                }
+            }
+        }
+    }
+
+
+    for(var j=coins.length-1;j>=0;j--){
+
+        var coin = coins[j];
+
+        coin.y += speed*.5;
+
+        if(coin.y > 720){
+
+            coins.splice(j,1);
+            continue;
+        }
+
+
+        if(
+            coin.x > car.x &&
+            coin.x < car.x+car.w &&
+            coin.y > car.y &&
+            coin.y < car.y+car.h
+        ){
+
+            coins.splice(j,1);
+
+            score += 5;
+
+            fuel += 15;
+
+            if(fuel > 100){
+                fuel = 100;
+            }
+        }
+    }
+
+
+    if(score > 0 && score % 200 == 0){
+
+        shield = 200;
+    }
+
+}
+
+
+function tree(x,y){
+
+    ctx.fillStyle="#5b3b20";
+    ctx.fillRect(x-3,y+25,6,30);
+
+    ctx.fillStyle="#17421e";
+
+    ctx.beginPath();
+    ctx.arc(x,y,25,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x-17,y+12,18,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x+17,y+12,18,0,Math.PI*2);
+    ctx.fill();
+}
+
+
+function drawBackground(){
+
+    ctx.fillStyle="#1c401f";
+    ctx.fillRect(0,0,460,700);
+
+
+    for(var y=-50;y<750;y+=70){
+
+        var yy = y + roadMove%70;
+
+        tree(25,yy);
+        tree(55,yy+30);
+
+        tree(435,yy+15);
+        tree(405,yy+45);
+    }
+
+
+    ctx.fillStyle="#343834";
+    ctx.fillRect(roadLeft,0,roadRight-roadLeft,700);
+
+
+    ctx.fillStyle="#c9a65d";
+
+    ctx.fillRect(roadLeft,0,3,700);
+    ctx.fillRect(roadRight-3,0,3,700);
+
+
+    ctx.fillStyle="#d6d0ac";
+
+    for(var i=1;i<4;i++){
+
+        var x = roadLeft + i*(roadRight-roadLeft)/4;
+
+        for(var y=-50;y<700;y+=70){
+
+            ctx.fillRect(
+                x,
+                y+(roadMove%70),
+                2,
+                30
+            );
+        }
+    }
+}
+
+
+function drawCar(c,color){
+
+    ctx.fillStyle="#111";
+
+    ctx.fillRect(c.x-3,c.y+15,5,17);
+    ctx.fillRect(c.x+c.w-2,c.y+15,5,17);
+
+    ctx.fillRect(c.x-3,c.y+c.h-25,5,17);
+    ctx.fillRect(c.x+c.w-2,c.y+c.h-25,5,17);
+
+
+    ctx.fillStyle=color;
+
+    ctx.fillRect(
+        c.x+4,
+        c.y+3,
+        c.w-8,
+        c.h-6
+    );
+
+
+    ctx.fillStyle="#193c4d";
+
+    ctx.fillRect(
+        c.x+9,
+        c.y+12,
+        c.w-18,
+        19
+    );
+
+
+    ctx.fillStyle="#ffe06a";
+
+    ctx.fillRect(c.x+7,c.y+4,7,5);
+    ctx.fillRect(c.x+c.w-14,c.y+4,7,5);
+}
+
+
+function drawCoin(c){
+
+    ctx.fillStyle="#f0c94d";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        c.x,
+        c.y,
+        c.size,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+}
+
+
+function drawHud(){
+
+    ctx.fillStyle="white";
+    ctx.font="bold 16px Arial";
+    ctx.textAlign="left";
+
+    ctx.fillText(
+        "SCORE "+score,
+        12,
+        25
+    );
+
+    ctx.fillText(
+        carColors[selectedCarName()],
+        12,
+        45
+    );
+
+
+    ctx.fillStyle="#e3c35b";
+    ctx.fillText(
+        "♥".repeat(lives),
+        12,
+        67
+    );
+
+
+    ctx.fillStyle="#111";
+    ctx.fillRect(
+        315,
+        15,
+        125,
+        10
+    );
+
+
+    ctx.fillStyle="#d19b43";
+
+    ctx.fillRect(
+        315,
+        15,
+        125*fuel/100,
+        10
+    );
+
+
+    ctx.fillStyle="white";
+    ctx.font="11px Arial";
+
+    ctx.fillText(
+        "BOOST",
+        315,
+        40
+    );
+
+
+    ctx.textAlign="right";
+
+    ctx.fillText(
+        Math.round(speed*25)+" km/h",
+        448,
+        65
+    );
+
+
+    if(shield > 0){
+
+        ctx.textAlign="center";
+        ctx.fillStyle="#f0d85d";
+        ctx.fillText(
+            "SHIELD",
+            230,
+            90
+        );
+    }
+}
+
+
+function selectedCarName(){
+
+    return selectedCar;
+}
+
+
+var selectedCar = 0;
+
+
+function menu(){
+
+    drawBackground();
+
+    ctx.textAlign="center";
+
+    ctx.fillStyle="#eee5c8";
+    ctx.font="bold 38px Arial";
+
+    ctx.fillText(
+        "FOREST RUN",
+        230,
+        120
+    );
+
+
+    ctx.font="15px Arial";
+    ctx.fillStyle="#a9b99c";
+
+    ctx.fillText(
+        "Pick a car",
+        230,
+        150
+    );
+
+
+    for(var i=0;i<4;i++){
+
+        var x = 44+i*96;
+
+        if(i == selectedCar){
+            ctx.fillStyle="#d3a64f";
+        }else{
+            ctx.fillStyle="#2c382b";
+        }
+
+        ctx.fillRect(
+            x,
+            220,
+            82,
+            120
+        );
+
+
+        ctx.fillStyle=carColors[i];
+
+        ctx.fillRect(
+            x+29,
+            240,
+            24,
+            58
+        );
+
+
+        ctx.fillStyle="white";
+        ctx.font="12px Arial";
+
+        ctx.fillText(
+            carNames[i],
+            x+41,
+            325
+        );
+    }
+
+
+    ctx.fillStyle="#cfd8c7";
+    ctx.font="14px Arial";
+
+    ctx.fillText(
+        "Collect coins to refill boost",
+        230,
+        390
+    );
+
+    ctx.fillText(
+        "Every 200 points gives a shield",
+        230,
+        415
+    );
+
+
+    ctx.fillStyle="#d5aa51";
+    ctx.font="bold 17px Arial";
+
+    ctx.fillText(
+        "PRESS ENTER",
+        230,
+        465
+    );
+
+
+    ctx.fillStyle="#99ad8b";
+    ctx.font="13px Arial";
+
+    ctx.fillText(
+        "BEST "+best,
+        230,
+        495
+    );
+}
+
+
+function gameOverScreen(){
+
+    drawBackground();
+
+    for(var i=0;i<enemies.length;i++){
+        drawCar(
+            enemies[i],
+            "#557ba4"
+        );
+    }
+
+    drawCar(
+        car,
+        carColors[selectedCar]
+    );
+
+
+    ctx.fillStyle="rgba(8,13,8,.9)";
+    ctx.fillRect(
+        40,
+        220,
+        380,
+        230
+    );
+
+
+    ctx.textAlign="center";
+
+    ctx.fillStyle="#d5aa51";
+    ctx.font="bold 34px Arial";
+
+    ctx.fillText(
+        "CRASHED",
+        230,
+        280
+    );
+
+
+    ctx.fillStyle="white";
+    ctx.font="16px Arial";
+
+    ctx.fillText(
+        "Score "+score,
+        230,
+        320
+    );
+
+    ctx.fillText(
+        "Best "+best,
+        230,
+        350
+    );
+
+
+    ctx.fillStyle="#92ad75";
+    ctx.font="bold 15px Arial";
+
+    ctx.fillText(
+        "PRESS ENTER TO TRY AGAIN",
+        230,
+        410
+    );
+}
+
+
+function draw(){
+
+    if(!playing){
+
+        if(dead){
+            gameOverScreen();
+        }else{
+            menu();
+        }
+
+        return;
+    }
+
+
+    drawBackground();
+
+
+    for(var i=0;i<enemies.length;i++){
+
+        drawCar(
+            enemies[i],
+            enemies[i].alien ? "#6da24d" : "#527aa5"
+        );
+    }
+
+
+    for(var j=0;j<coins.length;j++){
+
+        drawCoin(coins[j]);
+    }
+
+
+    drawCar(
+        car,
+        carColors[selectedCar]
+    );
+
+
+    drawHud();
+}
+
+
+document.addEventListener(
+    "keydown",
+    function(e){
+
+        var k=e.key.toLowerCase();
+
+        if(k=="a" || e.key=="ArrowLeft"){
+            left=true;
+        }
+
+        if(k=="d" || e.key=="ArrowRight"){
+            right=true;
+        }
+
+        if(e.code=="Space"){
+            boostKey=true;
+        }
+
+
+        if(e.key=="Enter" && !playing){
+
+            startGame();
+        }
+
+
+        if(
+            e.key=="ArrowLeft" ||
+            e.key=="ArrowRight" ||
+            e.code=="Space"
+        ){
+            e.preventDefault();
+        }
+    }
+);
+
+
+document.addEventListener(
+    "keyup",
+    function(e){
+
+        var k=e.key.toLowerCase();
+
+        if(k=="a" || e.key=="ArrowLeft"){
+            left=false;
+        }
+
+        if(k=="d" || e.key=="ArrowRight"){
+            right=false;
+        }
+
+        if(e.code=="Space"){
+            boostKey=false;
+        }
+    }
+);
+
+
+canvas.addEventListener(
+    "pointerdown",
+    function(e){
+
+        var r=canvas.getBoundingClientRect();
+
+        var px=
+            (e.clientX-r.left)*
+            460/r.width;
+
+
+        if(!playing){
+
+            if(
+                !dead &&
+                px>40 &&
+                px<430
+            ){
+
+                var n=Math.floor(
+                    (px-44)/96
+                );
+
+                if(n>=0 && n<4){
+
+                    selectedCar=n;
+                    return;
+                }
+            }
+
+            startGame();
+            return;
+        }
+
+
+        if(px<230){
+            left=true;
+            right=false;
+        }else{
+            right=true;
+            left=false;
+        }
+    }
+);
+
+
+canvas.addEventListener(
+    "pointermove",
+    function(e){
+
+        if(!playing || e.buttons==0){
+            return;
+        }
+
+        var r=canvas.getBoundingClientRect();
+
+        var px=
+            (e.clientX-r.left)*
+            460/r.width;
+
+
+        if(px<230){
+            left=true;
+            right=false;
+        }else{
+            right=true;
+            left=false;
+        }
+    }
+);
+
+
+canvas.addEventListener(
+    "pointerup",
+    function(){
+
+        left=false;
+        right=false;
+        boostKey=false;
+    }
+);
+
+
+function gameLoop(){
+
+    update();
+    draw();
+
+    requestAnimationFrame(
+        gameLoop
+    );
+}
+
+
+gameLoop();
+
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
