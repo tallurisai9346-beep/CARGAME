@@ -1,79 +1,89 @@
 # Forest Car Game
 
-Small browser car game where you race in a forest, avoid other cars, and do not fall from the track.
+A simple browser racing game that is all about the thrill of driving your vehicle past other cars while avoiding collisions. You race forward, dodging oncoming traffic and boosting when possible to achieve the highest score possible.
 
-**Play the game:** [Forest Car Game](https://cargame-rouge.vercel.app/?utm_source=chatgpt.com)
+Live game: https://cargame-rouge.vercel.app/
 
-## Description
+## About the game
 
-I decided to make a small car game that could be easily run from the browser. It is pretty simple — race in the car, don't crash, and make your best score on each try.
+The purpose of this project was to design and develop a racing car game for the web browser. This game was designed to be a simple car game that could be played by anyone. The player controls their car and must avoid oncoming traffic, boosting when they can to gain points.
 
-I've tried to leave the game mechanics simple without covering the whole page with extra elements.
+I have made this game simple to play and intuitive so a player doesn't need to understand the controls for every aspect of the game.
 
-## How to play
+### Controls
 
-Use **Left / Right Arrow** keys to drive.
+Left / Right Arrow - Move the car
 
-**A / D** can also be used to drive.
+A / D - Move the car
 
-Use **Space** to activate the boost.
+Space - Boost
 
-Do not touch other cars and obstacles.
+## Features
 
-Keep racing and try to beat your high score.
+• Forest racing theme
 
-Currently, live version demonstrates the controls as follows:
+• Player controlled car movement
 
-Controls: **Arrow Keys / A-D to drive**, **Space to boost**.
+• Oncoming traffic cars and obstacles
 
-## Game features
+• Boost mechanic
 
-* Forest racing environment
-* Simple controls for the car
-* Boosting feature
-* Moving traffic and obstacles
-* Scoring gameplay
-* Runs directly in a browser
-* No installation required
+• Score progression
+
+• Increasing difficulty
+
+• Web browser based game, requiring no download
 
 ## Built with
 
-Project for the web with basic frontend technologies:
+• HTML
 
-* HTML
-* CSS
-* JavaScript
+• CSS
 
-No complicated configurations are needed to run the deployed version of the game.
+• JavaScript
 
-## Playing locally
+## Running the game
 
-If you have the game files downloaded locally, you can simply open the main HTML file.
+You can run this game by downloading or cloning this repo and opening the index.html file in your browser.
 
-In case you want to use VS Code, you can install Live Server extension, use `Go Live` command, and open the generated local server URL.
+Additionally, this project can be opened in the VS Code editor by using the Live Server extension.
 
-## Why was it created
+## AI Use Declaration
 
-Just because I wanted to create something that looks more like a game instead of plain webpage. It was also useful to practice my knowledge in movement, collision, game controls, etc.
+This project utilizes the use of an AI as an assistant in the development of this project. The AI assistant was used for
 
-## Ideas to implement in the future
+• Asking for help with coding problems and debugging.
 
-These are some features I am planning to add:
+This project also used the AI assistant to explain concepts to me as I learned JavaScript and browser-game development for the first time.
 
-* More cars to avoid
-* Several forest tracks
-* Increased difficulty level
-* Improved car effect animations
-* Other types of boost
-* Saving player high scores
-* Additional mobile controls
+• Asking for suggestions on features or improvements that could be made to the game.
 
-## Live demo
+The game mechanics, controls, layout, style, and features were all designed and developed by me. The game was debugged and tested by me as well. The AI assistant provided references and advice when I asked for it, but it did not write this project for me. I used the AI assistant as a reference when I needed help, which is why it is appropriate to use it as a resource for this project.
 
-Try it:
+## What I learned
 
-[https://cargame-rouge.vercel.app/](https://cargame-rouge.vercel.app/?utm_source=chatgpt.com)
+In this project, I was able to gain more experience with JavaScript game loops, keyboard mechanics, collision detection, CSS styling, and other aspects of browser-game development.
 
----
+## Improvements
 
-Created as a small web game. Have fun driving! 🚗
+The following are some of the suggested improvements for my game:
+
+• Additional tracks
+
+• Additional cars
+
+• Additional sound effects
+
+• Mobile controls
+
+• Additional difficulty options
+
+• Saving high scores
+
+• Additional power-ups
+
+## Live Demo
+
+https://cargame-rouge.vercel.app/
+
+A small browser game project. 🚗
